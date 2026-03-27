@@ -9,9 +9,9 @@ const ShareRetriever = () => {
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
 
-  const handleRetrieve = () => {
+  const handleRetrieve = async () => {
     if (code.trim().length < 6) return;
-    const found = retrieveShare(code.trim());
+    const found = await retrieveShare(code.trim());
     if (found) {
       setItem(found);
       setNotFound(false);
