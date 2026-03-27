@@ -17,7 +17,7 @@ const ShareCreator = () => {
     setError('');
     try {
       if (mode === 'text' && text.trim()) {
-        const c = createTextShare(text.trim());
+        const c = await createTextShare(text.trim());
         setCode(c);
       } else if (mode === 'file' && file) {
         const c = await createFileShare(file);
