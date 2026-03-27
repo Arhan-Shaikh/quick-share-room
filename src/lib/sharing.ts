@@ -1,14 +1,16 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export interface SharedItem {
   id: string;
+  code: string;
   type: 'text' | 'file';
-  content: string; // text content or base64 for files
+  content: string;
   fileName?: string;
   fileType?: string;
-  createdAt: number;
-  expiresAt: number;
+  createdAt: string;
+  expiresAt: string;
 }
 
-const STORAGE_KEY = 'dropzone_items';
 const EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
 
 function generateCode(): string {
@@ -20,72 +22,71 @@ function generateCode(): string {
   return code;
 }
 
-function getAll(): Record<string, SharedItem> {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return {};
-    const items = JSON.parse(raw) as Record<string, SharedItem>;
-    // Purge expired
-    const now = Date.now();
-    const valid: Record<string, SharedItem> = {};
-    for (const [k, v] of Object.entries(items)) {
-      if (v.expiresAt > now) valid[k] = v;
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
-    return valid;
-  } catch {
-    return {};
-  }
-}
-
-export function createTextShare(text: string): string {
+export async function createTextShare(text: string): Promise<string> {
   const code = generateCode();
-  const items = getAll();
-  items[code] = {
-    id: code,
+  const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString();
+
+  const { error } = await supabase.from('shared_items').insert({
+    code,
     type: 'text',
     content: text,
-    createdAt: Date.now(),
-    expiresAt: Date.now() + EXPIRY_MS,
-  };
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
+    expires_at: expiresAt,
+  });
+
+  if (error) throw new Error('Failed to create share');
   return code;
 }
 
-export function createFileShare(file: File): Promise<string> {
+export async function createFileShare(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onload = () => {
+    reader.onload = async () => {
       const code = generateCode();
-      const items = getAll();
-      items[code] = {
-        id: code,
+      const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString();
+
+      const { error } = await supabase.from('shared_items').insert({
+        code,
         type: 'file',
         content: reader.result as string,
-        fileName: file.name,
-        fileType: file.type,
-        createdAt: Date.now(),
-        expiresAt: Date.now() + EXPIRY_MS,
-      };
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(items));
-        resolve(code);
-      } catch {
-        reject(new Error('File too large for local storage'));
+        file_name: file.name,
+        file_type: file.type,
+        expires_at: expiresAt,
+      });
+
+      if (error) {
+        reject(new Error('File too large or failed to upload'));
+        return;
       }
+      resolve(code);
     };
     reader.onerror = () => reject(new Error('Failed to read file'));
     reader.readAsDataURL(file);
   });
 }
 
-export function retrieveShare(code: string): SharedItem | null {
-  const items = getAll();
-  return items[code.toUpperCase()] || null;
+export async function retrieveShare(code: string): Promise<SharedItem | null> {
+  const { data, error } = await supabase
+    .from('shared_items')
+    .select('*')
+    .eq('code', code.toUpperCase())
+    .single();
+
+  if (error || !data) return null;
+
+  return {
+    id: data.id,
+    code: data.code,
+    type: data.type as 'text' | 'file',
+    content: data.content,
+    fileName: data.file_name ?? undefined,
+    fileType: data.file_type ?? undefined,
+    createdAt: data.created_at,
+    expiresAt: data.expires_at,
+  };
 }
 
 export function getTimeRemaining(item: SharedItem): string {
-  const remaining = item.expiresAt - Date.now();
+  const remaining = new Date(item.expiresAt).getTime() - Date.now();
   if (remaining <= 0) return 'Expired';
   const mins = Math.floor(remaining / 60000);
   const secs = Math.floor((remaining % 60000) / 1000);
