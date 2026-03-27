@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      shared_items: {
+        Row: {
+          code: string
+          content: string
+          created_at: string
+          expires_at: string
+          file_name: string | null
+          file_type: string | null
+          id: string
+          type: string
+        }
+        Insert: {
+          code: string
+          content: string
+          created_at?: string
+          expires_at: string
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          type: string
+        }
+        Update: {
+          code?: string
+          content?: string
+          created_at?: string
+          expires_at?: string
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          type?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
