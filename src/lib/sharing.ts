@@ -54,8 +54,9 @@ export async function createTextShare(text: string, options: CreateShareOptions 
 
   const { error } = await supabase.from('shared_items').insert({
     code,
-    type: encrypted ? 'text_encrypted' : 'text',
+    type: 'text',
     content,
+    encrypted,
     expires_at: expiresAt,
   });
 
@@ -89,8 +90,9 @@ export async function createFileShare(file: File, options: CreateShareOptions = 
 
         const { error } = await supabase.from('shared_items').insert({
           code,
-          type: encrypted ? 'file_encrypted' : 'file',
+          type: 'file',
           content,
+          encrypted,
           file_name: file.name,
           file_type: file.type,
           expires_at: expiresAt,
@@ -129,8 +131,8 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
   if (error || !data) return null;
 
-  const isEncrypted = data.type.endsWith('_encrypted');
-  const baseType = data.type.replace('_encrypted', '') as 'text' | 'file';
+  const isEncrypted = !!(data as any).encrypted;
+  const baseType = data.type as 'text' | 'file';
 
   if (isEncrypted && keyString) {
     try {
@@ -176,7 +178,7 @@ export async function checkShareEncryption(roomCode: string): Promise<{ found: b
     .single();
 
   if (error || !data) return { found: false, encrypted: false };
-  return { found: true, encrypted: data.type.endsWith('_encrypted'), data };
+  return { found: true, encrypted: !!(data as any).encrypted, data };
 }
 
 export function getTimeRemaining(item: SharedItem): string {

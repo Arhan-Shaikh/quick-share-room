@@ -19,6 +19,7 @@ export type Database = {
           code: string
           content: string
           created_at: string
+          encrypted: boolean
           expires_at: string
           file_name: string | null
           file_type: string | null
@@ -29,6 +30,7 @@ export type Database = {
           code: string
           content: string
           created_at?: string
+          encrypted?: boolean
           expires_at: string
           file_name?: string | null
           file_type?: string | null
@@ -39,6 +41,7 @@ export type Database = {
           code?: string
           content?: string
           created_at?: string
+          encrypted?: boolean
           expires_at?: string
           file_name?: string | null
           file_type?: string | null

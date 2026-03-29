@@ -70,7 +70,7 @@ const ShareRetriever = () => {
     if (!pendingData || !decryptionKey.trim()) return;
     try {
       const decryptedContent = await decrypt(pendingData.content, decryptionKey.trim());
-      const baseType = pendingData.type.replace('_encrypted', '') as 'text' | 'file';
+      const baseType = pendingData.type as 'text' | 'file';
       setItem({
         id: pendingData.id,
         code: pendingData.code,
