@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
 import { createTextShare, createFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
-import { Upload, FileText, Copy, Check } from 'lucide-react';
+import { Upload, FileText, Copy, Check, Lock, Unlock } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 type Mode = 'idle' | 'text' | 'file';
@@ -9,7 +9,9 @@ const ShareCreator = () => {
   const [mode, setMode] = useState<Mode>('idle');
   const [text, setText] = useState('');
   const [file, setFile] = useState<File | null>(null);
-  const [code, setCode] = useState<string | null>(null);
+  const [token, setToken] = useState<string | null>(null);
+  const [isEncrypted, setIsEncrypted] = useState(false);
+  const [encryptionEnabled, setEncryptionEnabled] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -18,21 +20,24 @@ const ShareCreator = () => {
   const handleShare = useCallback(async () => {
     setError('');
     try {
+      const opts = { expiryMs, encrypted: encryptionEnabled };
       if (mode === 'text' && text.trim()) {
-        const c = await createTextShare(text.trim(), expiryMs);
-        setCode(c);
+        const result = await createTextShare(text.trim(), opts);
+        setToken(result.token);
+        setIsEncrypted(result.encrypted);
       } else if (mode === 'file' && file) {
-        const c = await createFileShare(file, expiryMs);
-        setCode(c);
+        const result = await createFileShare(file, opts);
+        setToken(result.token);
+        setIsEncrypted(result.encrypted);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
-  }, [mode, text, file, expiryMs]);
+  }, [mode, text, file, expiryMs, encryptionEnabled]);
 
   const handleCopy = () => {
-    if (code) {
-      navigator.clipboard.writeText(code);
+    if (token) {
+      navigator.clipboard.writeText(token);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     }
@@ -52,55 +57,84 @@ const ShareCreator = () => {
     setMode('idle');
     setText('');
     setFile(null);
-    setCode(null);
+    setToken(null);
+    setIsEncrypted(false);
     setError('');
   };
 
   const selectedExpiry = EXPIRY_OPTIONS.find(o => o.value === expiryMs);
 
-  if (code) {
-    const displayCode = code.split('-')[0];
+  if (token) {
+    const roomCode = token.includes('-') ? token.split('-')[0] : token;
     return (
       <div className="space-y-6">
         <div className="space-y-1">
           <div className="text-muted-foreground text-sm">
             Share this code. Expires in {selectedExpiry?.label || '15 minutes'}.
           </div>
-          <div className="flex items-center gap-1.5 text-xs text-primary">
-            <span>🔒</span>
-            <span>End-to-end encrypted</span>
-          </div>
+          {isEncrypted && (
+            <div className="flex items-center gap-1.5 text-xs text-primary">
+              <Lock size={12} />
+              <span>End-to-end encrypted</span>
+            </div>
+          )}
+          {!isEncrypted && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Unlock size={12} />
+              <span>No encryption — retrievable with room code only</span>
+            </div>
+          )}
         </div>
 
         {/* Room code */}
         <div className="text-center">
           <div className="text-xs text-muted-foreground mb-1">Room Code</div>
           <div className="text-4xl font-bold tracking-[0.3em] text-primary">
-            {displayCode}
+            {roomCode}
           </div>
+          {!isEncrypted && (
+            <p className="text-xs text-muted-foreground mt-2">
+              Anyone with this code can retrieve the content
+            </p>
+          )}
         </div>
 
-        {/* Full encrypted token */}
-        <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Full encrypted token (includes decryption key):</div>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 bg-card border border-border rounded px-3 py-2 text-xs font-mono break-all select-all">
-              {code}
-            </code>
+        {/* Full token (only for encrypted shares) */}
+        {isEncrypted && (
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">Full encrypted token (includes decryption key):</div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 bg-card border border-border rounded px-3 py-2 text-xs font-mono break-all select-all">
+                {token}
+              </code>
+              <button
+                onClick={handleCopy}
+                className="p-2 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
+              >
+                {copied ? <Check size={18} /> : <Copy size={18} />}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Copy room code for non-encrypted */}
+        {!isEncrypted && (
+          <div className="flex justify-center">
             <button
               onClick={handleCopy}
-              className="p-2 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
+              className="flex items-center gap-2 px-4 py-2 bg-secondary text-secondary-foreground rounded text-sm hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              {copied ? <Check size={18} /> : <Copy size={18} />}
+              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? 'Copied!' : 'Copy code'}
             </button>
           </div>
-        </div>
+        )}
 
-        <div className="flex justify-center p-4 rounded" style={{ backgroundColor: 'hsl(220, 15%, 8%)' }}>
-          <QRCodeSVG value={code} size={160} fgColor="hsl(142, 70%, 50%)" bgColor="hsl(220, 15%, 8%)" />
+        <div className="flex justify-center p-4 rounded bg-background">
+          <QRCodeSVG value={token} size={160} fgColor="hsl(142, 70%, 50%)" bgColor="hsl(220, 15%, 8%)" />
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          Scan QR code or paste the full token to retrieve
+          {isEncrypted ? 'Scan QR code or paste the full token to retrieve' : 'Scan QR code or enter room code to retrieve'}
         </p>
         <button
           onClick={reset}
@@ -133,6 +167,24 @@ const ShareCreator = () => {
           ))}
         </div>
       </div>
+
+      {/* Encryption toggle */}
+      <button
+        onClick={() => setEncryptionEnabled(!encryptionEnabled)}
+        className={`flex items-center gap-2 w-full px-3 py-2 rounded border text-sm transition-colors ${
+          encryptionEnabled
+            ? 'border-primary bg-primary/10 text-primary'
+            : 'border-border bg-card text-muted-foreground hover:text-foreground'
+        }`}
+      >
+        {encryptionEnabled ? <Lock size={14} /> : <Unlock size={14} />}
+        <span className="font-medium">
+          {encryptionEnabled ? 'E2E Encryption ON' : 'E2E Encryption OFF'}
+        </span>
+        <span className="text-xs ml-auto">
+          {encryptionEnabled ? 'Requires full token to retrieve' : 'Retrievable with room code only'}
+        </span>
+      </button>
 
       {mode === 'idle' && (
         <div
