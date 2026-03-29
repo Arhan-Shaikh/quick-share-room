@@ -71,8 +71,18 @@ const ShareCreator = () => {
             <span>End-to-end encrypted</span>
           </div>
         </div>
+
+        {/* Room code */}
+        <div className="text-center">
+          <div className="text-xs text-muted-foreground mb-1">Room Code</div>
+          <div className="text-4xl font-bold tracking-[0.3em] text-primary">
+            {displayCode}
+          </div>
+        </div>
+
+        {/* Full encrypted token */}
         <div className="space-y-2">
-          <div className="text-xs text-muted-foreground">Full encrypted token:</div>
+          <div className="text-xs text-muted-foreground">Full encrypted token (includes decryption key):</div>
           <div className="flex items-center gap-2">
             <code className="flex-1 bg-card border border-border rounded px-3 py-2 text-xs font-mono break-all select-all">
               {code}
@@ -85,6 +95,7 @@ const ShareCreator = () => {
             </button>
           </div>
         </div>
+
         <div className="flex justify-center p-4 rounded" style={{ backgroundColor: 'hsl(220, 15%, 8%)' }}>
           <QRCodeSVG value={code} size={160} fgColor="hsl(142, 70%, 50%)" bgColor="hsl(220, 15%, 8%)" />
         </div>
