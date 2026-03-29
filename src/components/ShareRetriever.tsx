@@ -10,8 +10,9 @@ const ShareRetriever = () => {
   const [timeLeft, setTimeLeft] = useState('');
 
   const handleRetrieve = async () => {
-    if (code.trim().length < 6) return;
-    const found = await retrieveShare(code.trim());
+    const trimmed = code.trim();
+    if (!trimmed.includes('-') || trimmed.length < 8) return;
+    const found = await retrieveShare(trimmed);
     if (found) {
       setItem(found);
       setNotFound(false);
@@ -101,17 +102,16 @@ const ShareRetriever = () => {
           type="text"
           value={code}
           onChange={(e) => {
-            setCode(e.target.value.toUpperCase().slice(0, 6));
+            setCode(e.target.value);
             setNotFound(false);
           }}
           onKeyDown={(e) => e.key === 'Enter' && handleRetrieve()}
-          placeholder="ENTER CODE"
-          maxLength={6}
-          className="flex-1 bg-card border border-border rounded px-3 py-2 text-center text-lg tracking-[0.3em] font-semibold text-foreground placeholder:text-muted-foreground placeholder:tracking-[0.15em] placeholder:text-sm placeholder:font-normal focus:outline-none focus:ring-1 focus:ring-primary uppercase"
+          placeholder="Paste encrypted token"
+          className="flex-1 bg-card border border-border rounded px-3 py-2 text-sm font-mono text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
         />
         <button
           onClick={handleRetrieve}
-          disabled={code.length < 6}
+          disabled={!code.includes('-') || code.length < 8}
           className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-semibold disabled:opacity-30 hover:shadow-[var(--terminal-glow-strong)] transition-shadow"
         >
           Go
@@ -119,7 +119,7 @@ const ShareRetriever = () => {
       </div>
       {notFound && (
         <p className="text-destructive text-sm">
-          Code not found or expired.
+          Invalid token, wrong key, or expired.
         </p>
       )}
     </div>

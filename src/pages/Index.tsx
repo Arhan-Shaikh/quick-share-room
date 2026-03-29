@@ -51,8 +51,8 @@ const Index = () => {
 
         {/* Footer */}
         <div className="text-xs text-muted-foreground text-center space-y-1">
-          <p>Data auto-expires based on your chosen duration</p>
-          <p>Shared across all devices via cloud</p>
+          <p>🔒 End-to-end encrypted — server never sees your data</p>
+          <p>Auto-expires based on your chosen duration</p>
         </div>
       </div>
     </div>
