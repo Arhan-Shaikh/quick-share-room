@@ -90,8 +90,9 @@ export async function createFileShare(file: File, options: CreateShareOptions = 
 
         const { error } = await supabase.from('shared_items').insert({
           code,
-          type: encrypted ? 'file_encrypted' : 'file',
+          type: 'file',
           content,
+          encrypted,
           file_name: file.name,
           file_type: file.type,
           expires_at: expiresAt,
