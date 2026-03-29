@@ -59,27 +59,37 @@ const ShareCreator = () => {
   const selectedExpiry = EXPIRY_OPTIONS.find(o => o.value === expiryMs);
 
   if (code) {
+    const displayCode = code.split('-')[0];
     return (
       <div className="space-y-6">
-        <div className="text-muted-foreground text-sm">
-          Share this code. Expires in {selectedExpiry?.label || '15 minutes'}.
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="text-4xl font-bold tracking-[0.3em] text-primary">
-            {code}
+        <div className="space-y-1">
+          <div className="text-muted-foreground text-sm">
+            Share this code. Expires in {selectedExpiry?.label || '15 minutes'}.
           </div>
-          <button
-            onClick={handleCopy}
-            className="p-2 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
-          >
-            {copied ? <Check size={18} /> : <Copy size={18} />}
-          </button>
+          <div className="flex items-center gap-1.5 text-xs text-primary">
+            <span>🔒</span>
+            <span>End-to-end encrypted</span>
+          </div>
+        </div>
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">Full encrypted token:</div>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 bg-card border border-border rounded px-3 py-2 text-xs font-mono break-all select-all">
+              {code}
+            </code>
+            <button
+              onClick={handleCopy}
+              className="p-2 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
+            >
+              {copied ? <Check size={18} /> : <Copy size={18} />}
+            </button>
+          </div>
         </div>
         <div className="flex justify-center p-4 bg-white rounded">
           <QRCodeSVG value={code} size={160} />
         </div>
         <p className="text-xs text-muted-foreground text-center">
-          Scan QR code or enter the code manually
+          Scan QR code or paste the full token to retrieve
         </p>
         <button
           onClick={reset}
