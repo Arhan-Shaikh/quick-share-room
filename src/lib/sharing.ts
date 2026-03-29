@@ -131,8 +131,8 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
   if (error || !data) return null;
 
-  const isEncrypted = data.type.endsWith('_encrypted');
-  const baseType = data.type.replace('_encrypted', '') as 'text' | 'file';
+  const isEncrypted = !!(data as any).encrypted;
+  const baseType = data.type as 'text' | 'file';
 
   if (isEncrypted && keyString) {
     try {
@@ -178,7 +178,7 @@ export async function checkShareEncryption(roomCode: string): Promise<{ found: b
     .single();
 
   if (error || !data) return { found: false, encrypted: false };
-  return { found: true, encrypted: data.type.endsWith('_encrypted'), data };
+  return { found: true, encrypted: !!(data as any).encrypted, data };
 }
 
 export function getTimeRemaining(item: SharedItem): string {
