@@ -30,24 +30,44 @@ function generateCode(): string {
   return code;
 }
 
-/** Returns full share token: LOOKUP-ENCRYPTIONKEY */
-export async function createTextShare(text: string, expiryMs: number = DEFAULT_EXPIRY_MS): Promise<string> {
+export interface CreateShareOptions {
+  expiryMs?: number;
+  encrypted?: boolean;
+}
+
+/** Returns token: CODE-KEY if encrypted, or just CODE if not */
+export async function createTextShare(text: string, options: CreateShareOptions = {}): Promise<{ token: string; encrypted: boolean }> {
+  const { expiryMs = DEFAULT_EXPIRY_MS, encrypted = false } = options;
   const code = generateCode();
   const expiresAt = new Date(Date.now() + expiryMs).toISOString();
-  const { ciphertext, keyString } = await encrypt(text);
+
+  let content: string;
+  let keyString: string | null = null;
+
+  if (encrypted) {
+    const result = await encrypt(text);
+    content = result.ciphertext;
+    keyString = result.keyString;
+  } else {
+    content = text;
+  }
 
   const { error } = await supabase.from('shared_items').insert({
     code,
-    type: 'text',
-    content: ciphertext,
+    type: encrypted ? 'text_encrypted' : 'text',
+    content,
     expires_at: expiresAt,
   });
 
   if (error) throw new Error('Failed to create share');
-  return `${code}-${keyString}`;
+  return {
+    token: encrypted ? `${code}-${keyString}` : code,
+    encrypted,
+  };
 }
 
-export async function createFileShare(file: File, expiryMs: number = DEFAULT_EXPIRY_MS): Promise<string> {
+export async function createFileShare(file: File, options: CreateShareOptions = {}): Promise<{ token: string; encrypted: boolean }> {
+  const { expiryMs = DEFAULT_EXPIRY_MS, encrypted = false } = options;
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
@@ -55,12 +75,22 @@ export async function createFileShare(file: File, expiryMs: number = DEFAULT_EXP
         const code = generateCode();
         const expiresAt = new Date(Date.now() + expiryMs).toISOString();
         const dataUrl = reader.result as string;
-        const { ciphertext, keyString } = await encrypt(dataUrl);
+
+        let content: string;
+        let keyString: string | null = null;
+
+        if (encrypted) {
+          const result = await encrypt(dataUrl);
+          content = result.ciphertext;
+          keyString = result.keyString;
+        } else {
+          content = dataUrl;
+        }
 
         const { error } = await supabase.from('shared_items').insert({
           code,
-          type: 'file',
-          content: ciphertext,
+          type: encrypted ? 'file_encrypted' : 'file',
+          content,
           file_name: file.name,
           file_type: file.type,
           expires_at: expiresAt,
@@ -70,7 +100,10 @@ export async function createFileShare(file: File, expiryMs: number = DEFAULT_EXP
           reject(new Error('File too large or failed to upload'));
           return;
         }
-        resolve(`${code}-${keyString}`);
+        resolve({
+          token: encrypted ? `${code}-${keyString}` : code,
+          encrypted,
+        });
       } catch (e) {
         reject(e);
       }
@@ -80,13 +113,13 @@ export async function createFileShare(file: File, expiryMs: number = DEFAULT_EXP
   });
 }
 
-/** Accepts full token "LOOKUP-KEY", splits and decrypts */
+/** Retrieve by full token or room code. Returns item + whether decryption key is needed. */
 export async function retrieveShare(token: string): Promise<SharedItem | null> {
   const dashIndex = token.indexOf('-');
-  if (dashIndex === -1) return null;
+  const isFullToken = dashIndex !== -1 && dashIndex >= 6;
 
-  const lookupCode = token.substring(0, dashIndex).toUpperCase();
-  const keyString = token.substring(dashIndex + 1);
+  const lookupCode = isFullToken ? token.substring(0, dashIndex).toUpperCase() : token.toUpperCase().substring(0, 6);
+  const keyString = isFullToken ? token.substring(dashIndex + 1) : null;
 
   const { data, error } = await supabase
     .from('shared_items')
@@ -96,21 +129,54 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
   if (error || !data) return null;
 
-  try {
-    const decryptedContent = await decrypt(data.content, keyString);
+  const isEncrypted = data.type.endsWith('_encrypted');
+  const baseType = data.type.replace('_encrypted', '') as 'text' | 'file';
+
+  if (isEncrypted && keyString) {
+    try {
+      const decryptedContent = await decrypt(data.content, keyString);
+      return {
+        id: data.id,
+        code: data.code,
+        type: baseType,
+        content: decryptedContent,
+        fileName: data.file_name ?? undefined,
+        fileType: data.file_type ?? undefined,
+        createdAt: data.created_at,
+        expiresAt: data.expires_at,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  if (!isEncrypted) {
     return {
       id: data.id,
       code: data.code,
-      type: data.type as 'text' | 'file',
-      content: decryptedContent,
+      type: baseType,
+      content: data.content,
       fileName: data.file_name ?? undefined,
       fileType: data.file_type ?? undefined,
       createdAt: data.created_at,
       expiresAt: data.expires_at,
     };
-  } catch {
-    return null; // wrong key
   }
+
+  // Encrypted but no key provided — return null (caller should prompt for key)
+  return null;
+}
+
+/** Check if a room code has encrypted content (for prompting key entry) */
+export async function checkShareEncryption(roomCode: string): Promise<{ found: boolean; encrypted: boolean; data?: any }> {
+  const { data, error } = await supabase
+    .from('shared_items')
+    .select('*')
+    .eq('code', roomCode.toUpperCase())
+    .single();
+
+  if (error || !data) return { found: false, encrypted: false };
+  return { found: true, encrypted: data.type.endsWith('_encrypted'), data };
 }
 
 export function getTimeRemaining(item: SharedItem): string {
