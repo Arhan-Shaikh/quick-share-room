@@ -51,8 +51,8 @@ const Index = () => {
 
         {/* Footer */}
         <div className="text-xs text-muted-foreground text-center space-y-1">
-          <p>Data auto-expires after 15 minutes</p>
-          <p>Stored locally in your browser</p>
+          <p>Data auto-expires based on your chosen duration</p>
+          <p>Shared across all devices via cloud</p>
         </div>
       </div>
     </div>
