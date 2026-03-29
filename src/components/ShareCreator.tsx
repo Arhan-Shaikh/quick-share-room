@@ -85,8 +85,8 @@ const ShareCreator = () => {
             </button>
           </div>
         </div>
-        <div className="flex justify-center p-4 bg-white rounded">
-          <QRCodeSVG value={code} size={160} />
+        <div className="flex justify-center p-4 rounded" style={{ backgroundColor: 'hsl(220, 15%, 8%)' }}>
+          <QRCodeSVG value={code} size={160} fgColor="hsl(142, 70%, 50%)" bgColor="hsl(220, 15%, 8%)" />
         </div>
         <p className="text-xs text-muted-foreground text-center">
           Scan QR code or paste the full token to retrieve
