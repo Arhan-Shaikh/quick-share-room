@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { retrieveShare, getTimeRemaining, type SharedItem } from '@/lib/sharing';
-import { supabase } from '@/integrations/supabase/client';
+import { retrieveShare, getTimeRemaining, checkShareEncryption, type SharedItem } from '@/lib/sharing';
 import { decrypt } from '@/lib/crypto';
 import { Download, Copy, Check, Clock, Key } from 'lucide-react';
 
@@ -10,58 +9,72 @@ const ShareRetriever = () => {
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
-  const [pendingData, setPendingData] = useState<{ id: string; code: string; type: string; content: string; file_name: string | null; file_type: string | null; created_at: string; expires_at: string } | null>(null);
+  const [pendingData, setPendingData] = useState<any>(null);
   const [decryptionKey, setDecryptionKey] = useState('');
   const [keyError, setKeyError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleRetrieve = async () => {
     const trimmed = code.trim().toUpperCase();
     if (!trimmed) return;
+    setLoading(true);
+    setNotFound(false);
 
-    // If it contains a dash and is long enough, try full token retrieval
+    // Try full token first (contains dash + key)
     if (trimmed.includes('-') && trimmed.length >= 8) {
       const found = await retrieveShare(trimmed);
       if (found) {
         setItem(found);
-        setNotFound(false);
         setPendingData(null);
+        setLoading(false);
         return;
       }
     }
 
-    // Try as room code only (first 6 chars)
+    // Try as room code (6 chars)
     const roomCode = trimmed.replace(/-/g, '').substring(0, 6);
     if (roomCode.length < 6) {
       setNotFound(true);
+      setLoading(false);
       return;
     }
 
-    const { data, error } = await supabase
-      .from('shared_items')
-      .select('*')
-      .eq('code', roomCode)
-      .single();
-
-    if (error || !data) {
+    const result = await checkShareEncryption(roomCode);
+    if (!result.found) {
       setNotFound(true);
       setItem(null);
       setPendingData(null);
-    } else {
-      setPendingData(data);
-      setNotFound(false);
-      setKeyError(false);
-      setDecryptionKey('');
+      setLoading(false);
+      return;
     }
+
+    if (result.encrypted) {
+      // Need decryption key
+      setPendingData(result.data);
+      setDecryptionKey('');
+      setKeyError(false);
+    } else {
+      // Not encrypted — retrieve directly
+      const found = await retrieveShare(roomCode);
+      if (found) {
+        setItem(found);
+        setPendingData(null);
+      } else {
+        setNotFound(true);
+      }
+    }
+    setLoading(false);
   };
 
   const handleDecrypt = async () => {
     if (!pendingData || !decryptionKey.trim()) return;
     try {
       const decryptedContent = await decrypt(pendingData.content, decryptionKey.trim());
+      const baseType = pendingData.type.replace('_encrypted', '') as 'text' | 'file';
       setItem({
         id: pendingData.id,
         code: pendingData.code,
-        type: pendingData.type as 'text' | 'file',
+        type: baseType,
         content: decryptedContent,
         fileName: pendingData.file_name ?? undefined,
         fileType: pendingData.file_type ?? undefined,
@@ -152,12 +165,12 @@ const ShareRetriever = () => {
     );
   }
 
-  // Key entry step (room code found, need decryption key)
+  // Key entry step (encrypted item found, need decryption key)
   if (pendingData) {
     return (
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Found item <span className="text-primary font-mono font-bold">{pendingData.code}</span>. Enter the decryption key to unlock.
+          Found encrypted item <span className="text-primary font-mono font-bold">{pendingData.code}</span>. Enter the decryption key to unlock.
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
@@ -210,14 +223,14 @@ const ShareRetriever = () => {
         />
         <button
           onClick={handleRetrieve}
-          disabled={code.trim().length < 6}
+          disabled={code.trim().length < 6 || loading}
           className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-semibold disabled:opacity-30 hover:shadow-[var(--terminal-glow-strong)] transition-shadow"
         >
-          Go
+          {loading ? '...' : 'Go'}
         </button>
       </div>
       <p className="text-xs text-muted-foreground">
-        Paste the full token to auto-decrypt, or enter just the 6-char room code.
+        Enter the 6-char room code, or paste the full token for encrypted shares.
       </p>
       {notFound && (
         <p className="text-destructive text-sm">
