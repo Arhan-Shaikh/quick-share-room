@@ -54,8 +54,9 @@ export async function createTextShare(text: string, options: CreateShareOptions 
 
   const { error } = await supabase.from('shared_items').insert({
     code,
-    type: encrypted ? 'text_encrypted' : 'text',
+    type: 'text',
     content,
+    encrypted,
     expires_at: expiresAt,
   });
 
