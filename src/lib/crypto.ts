@@ -34,7 +34,7 @@ async function exportKey(key: CryptoKey): Promise<string> {
 
 async function importKey(encoded: string): Promise<CryptoKey> {
   const raw = fromBase64Url(encoded);
-  return crypto.subtle.importKey('raw', raw, { name: ALGO, length: KEY_LENGTH }, false, ['decrypt']);
+  return crypto.subtle.importKey('raw', raw.buffer as ArrayBuffer, { name: ALGO, length: KEY_LENGTH }, false, ['decrypt']);
 }
 
 export async function encrypt(plaintext: string): Promise<{ ciphertext: string; keyString: string }> {
