@@ -11,7 +11,14 @@ export interface SharedItem {
   expiresAt: string;
 }
 
-const EXPIRY_MS = 15 * 60 * 1000; // 15 minutes
+export const EXPIRY_OPTIONS = [
+  { label: '5 minutes', value: 5 * 60 * 1000 },
+  { label: '15 minutes', value: 15 * 60 * 1000 },
+  { label: '30 minutes', value: 30 * 60 * 1000 },
+  { label: '1 hour', value: 60 * 60 * 1000 },
+] as const;
+
+const DEFAULT_EXPIRY_MS = 15 * 60 * 1000;
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -22,9 +29,9 @@ function generateCode(): string {
   return code;
 }
 
-export async function createTextShare(text: string): Promise<string> {
+export async function createTextShare(text: string, expiryMs: number = DEFAULT_EXPIRY_MS): Promise<string> {
   const code = generateCode();
-  const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString();
+  const expiresAt = new Date(Date.now() + expiryMs).toISOString();
 
   const { error } = await supabase.from('shared_items').insert({
     code,
@@ -37,12 +44,12 @@ export async function createTextShare(text: string): Promise<string> {
   return code;
 }
 
-export async function createFileShare(file: File): Promise<string> {
+export async function createFileShare(file: File, expiryMs: number = DEFAULT_EXPIRY_MS): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
       const code = generateCode();
-      const expiresAt = new Date(Date.now() + EXPIRY_MS).toISOString();
+      const expiresAt = new Date(Date.now() + expiryMs).toISOString();
 
       const { error } = await supabase.from('shared_items').insert({
         code,

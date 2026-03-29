@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { createTextShare, createFileShare } from '@/lib/sharing';
+import { createTextShare, createFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
 import { Upload, FileText, Copy, Check } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 
 type Mode = 'idle' | 'text' | 'file';
 
@@ -12,21 +13,22 @@ const ShareCreator = () => {
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
+  const [expiryMs, setExpiryMs] = useState(EXPIRY_OPTIONS[1].value);
 
   const handleShare = useCallback(async () => {
     setError('');
     try {
       if (mode === 'text' && text.trim()) {
-        const c = await createTextShare(text.trim());
+        const c = await createTextShare(text.trim(), expiryMs);
         setCode(c);
       } else if (mode === 'file' && file) {
-        const c = await createFileShare(file);
+        const c = await createFileShare(file, expiryMs);
         setCode(c);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
-  }, [mode, text, file]);
+  }, [mode, text, file, expiryMs]);
 
   const handleCopy = () => {
     if (code) {
@@ -54,11 +56,13 @@ const ShareCreator = () => {
     setError('');
   };
 
+  const selectedExpiry = EXPIRY_OPTIONS.find(o => o.value === expiryMs);
+
   if (code) {
     return (
       <div className="space-y-6">
         <div className="text-muted-foreground text-sm">
-          Share this code. It expires in 15 minutes.
+          Share this code. Expires in {selectedExpiry?.label || '15 minutes'}.
         </div>
         <div className="flex items-center gap-3">
           <div className="text-4xl font-bold tracking-[0.3em] text-primary">
@@ -71,6 +75,12 @@ const ShareCreator = () => {
             {copied ? <Check size={18} /> : <Copy size={18} />}
           </button>
         </div>
+        <div className="flex justify-center p-4 bg-white rounded">
+          <QRCodeSVG value={code} size={160} />
+        </div>
+        <p className="text-xs text-muted-foreground text-center">
+          Scan QR code or enter the code manually
+        </p>
         <button
           onClick={reset}
           className="text-sm text-muted-foreground hover:text-foreground underline underline-offset-4 transition-colors"
@@ -83,6 +93,26 @@ const ShareCreator = () => {
 
   return (
     <div className="space-y-4">
+      {/* Expiry selector */}
+      <div className="flex items-center gap-2 text-sm">
+        <span className="text-muted-foreground">Expires in:</span>
+        <div className="flex gap-1.5 flex-wrap">
+          {EXPIRY_OPTIONS.map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setExpiryMs(opt.value)}
+              className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${
+                expiryMs === opt.value
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-accent'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {mode === 'idle' && (
         <div
           className={`border-2 border-dashed rounded p-8 text-center transition-colors ${
