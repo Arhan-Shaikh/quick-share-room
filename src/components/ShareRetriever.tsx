@@ -25,7 +25,7 @@ const ShareRetriever = () => {
       const found = await retrieveShare(trimmed);
       if (found) {
         setItem(found);
-        setPendingData(null);
+        setPendingCode(null);
         setLoading(false);
         return;
       }
@@ -43,14 +43,14 @@ const ShareRetriever = () => {
     if (!result.found) {
       setNotFound(true);
       setItem(null);
-      setPendingData(null);
+      setPendingCode(null);
       setLoading(false);
       return;
     }
 
     if (result.encrypted) {
       // Need decryption key
-      setPendingData(result.data);
+      setPendingCode(roomCode);
       setDecryptionKey('');
       setKeyError(false);
     } else {
@@ -58,7 +58,7 @@ const ShareRetriever = () => {
       const found = await retrieveShare(roomCode);
       if (found) {
         setItem(found);
-        setPendingData(null);
+        setPendingCode(null);
       } else {
         setNotFound(true);
       }
@@ -67,26 +67,17 @@ const ShareRetriever = () => {
   };
 
   const handleDecrypt = async () => {
-    if (!pendingData || !decryptionKey.trim()) return;
-    try {
-      const decryptedContent = await decrypt(pendingData.content, decryptionKey.trim());
-      const baseType = pendingData.type as 'text' | 'file';
-      setItem({
-        id: pendingData.id,
-        code: pendingData.code,
-        type: baseType,
-        content: decryptedContent,
-        fileName: pendingData.file_name ?? undefined,
-        fileType: pendingData.file_type ?? undefined,
-        createdAt: pendingData.created_at,
-        expiresAt: pendingData.expires_at,
-      });
-      setPendingData(null);
+    if (!pendingCode || !decryptionKey.trim()) return;
+    const found = await retrieveShare(`${pendingCode}-${decryptionKey.trim()}`);
+    if (found) {
+      setItem(found);
+      setPendingCode(null);
       setKeyError(false);
-    } catch {
+    } else {
       setKeyError(true);
     }
   };
+
 
   useEffect(() => {
     if (!item) return;
