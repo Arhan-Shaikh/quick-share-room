@@ -20,8 +20,8 @@ var create_text_share_default = defineTool({
   title: "Create text share",
   description: "Create an ephemeral text share on DropZone. Returns a 6-character room code that anyone can use to retrieve the text before it expires.",
   inputSchema: {
-    text: z.string().min(1).describe("The text content to share."),
-    expiryMinutes: z.number().int().min(1).max(1440).optional().describe("Minutes until the share expires. Defaults to 15.")
+    text: z.string().min(1).max(1e6).describe("The text content to share (max ~1MB)."),
+    expiryMinutes: z.number().int().min(1).max(120).optional().describe("Minutes until the share expires (1-120). Defaults to 15.")
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ text, expiryMinutes }) => {
@@ -70,10 +70,13 @@ var retrieve_share_default = defineTool2({
       process.env.SUPABASE_PUBLISHABLE_KEY,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
-    const { data, error } = await supabase.from("shared_items").select("*").eq("code", roomCode.toUpperCase()).maybeSingle();
+    const { data: rows, error } = await supabase.rpc("get_shared_item", {
+      _code: roomCode.toUpperCase()
+    });
     if (error) {
       return { content: [{ type: "text", text: `Lookup failed: ${error.message}` }], isError: true };
     }
+    const data = Array.isArray(rows) ? rows[0] : null;
     if (!data) {
       return { content: [{ type: "text", text: "Not found or expired." }], isError: true };
     }

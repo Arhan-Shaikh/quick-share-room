@@ -20,6 +20,8 @@ export const EXPIRY_OPTIONS = [
 ] as const;
 
 const DEFAULT_EXPIRY_MS = 15 * 60 * 1000;
+const MAX_CONTENT_BYTES = 5_000_000 - 1;
+const MAX_FILE_BYTES = Math.floor(MAX_CONTENT_BYTES * 0.7); // account for base64 overhead (~33%)
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -52,6 +54,10 @@ export async function createTextShare(text: string, options: CreateShareOptions 
     content = text;
   }
 
+  if (new Blob([content]).size > MAX_CONTENT_BYTES) {
+    throw new Error('Content too large. Maximum is ~5MB.');
+  }
+
   const { error } = await supabase.from('shared_items').insert({
     code,
     type: 'text',
@@ -69,6 +75,9 @@ export async function createTextShare(text: string, options: CreateShareOptions 
 
 export async function createFileShare(file: File, options: CreateShareOptions = {}): Promise<{ token: string; encrypted: boolean }> {
   const { expiryMs = DEFAULT_EXPIRY_MS, encrypted = false } = options;
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error('File too large. Maximum is ~3.5MB.');
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
@@ -86,6 +95,11 @@ export async function createFileShare(file: File, options: CreateShareOptions = 
           keyString = result.keyString;
         } else {
           content = dataUrl;
+        }
+
+        if (new Blob([content]).size > MAX_CONTENT_BYTES) {
+          reject(new Error('File too large after encoding. Try a smaller file.'));
+          return;
         }
 
         const { error } = await supabase.from('shared_items').insert({
@@ -123,15 +137,12 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
   const lookupCode = isFullToken ? token.substring(0, dashIndex).toUpperCase() : token.toUpperCase().substring(0, 6);
   const keyString = isFullToken ? token.substring(dashIndex + 1) : null;
 
-  const { data, error } = await supabase
-    .from('shared_items')
-    .select('*')
-    .eq('code', lookupCode)
-    .single();
+  const { data: rows, error } = await supabase.rpc('get_shared_item', { _code: lookupCode });
 
+  const data = Array.isArray(rows) ? rows[0] : null;
   if (error || !data) return null;
 
-  const isEncrypted = !!(data as any).encrypted;
+  const isEncrypted = !!data.encrypted;
   const baseType = data.type as 'text' | 'file';
 
   if (isEncrypted && keyString) {
@@ -171,14 +182,13 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
 /** Check if a room code has encrypted content (for prompting key entry) */
 export async function checkShareEncryption(roomCode: string): Promise<{ found: boolean; encrypted: boolean; data?: any }> {
-  const { data, error } = await supabase
-    .from('shared_items')
-    .select('*')
-    .eq('code', roomCode.toUpperCase())
-    .single();
+  const { data: rows, error } = await supabase.rpc('check_shared_item_encryption', {
+    _code: roomCode.toUpperCase(),
+  });
 
-  if (error || !data) return { found: false, encrypted: false };
-  return { found: true, encrypted: !!(data as any).encrypted, data };
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (error || !row) return { found: false, encrypted: false };
+  return { found: true, encrypted: !!row.encrypted };
 }
 
 export function getTimeRemaining(item: SharedItem): string {

@@ -22,15 +22,14 @@ export default defineTool({
       { auth: { persistSession: false, autoRefreshToken: false } },
     );
 
-    const { data, error } = await supabase
-      .from("shared_items")
-      .select("*")
-      .eq("code", roomCode.toUpperCase())
-      .maybeSingle();
+    const { data: rows, error } = await supabase.rpc("get_shared_item", {
+      _code: roomCode.toUpperCase(),
+    });
 
     if (error) {
       return { content: [{ type: "text", text: `Lookup failed: ${error.message}` }], isError: true };
     }
+    const data = Array.isArray(rows) ? rows[0] : null;
     if (!data) {
       return { content: [{ type: "text", text: "Not found or expired." }], isError: true };
     }

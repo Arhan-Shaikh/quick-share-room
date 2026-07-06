@@ -15,14 +15,14 @@ export default defineTool({
   description:
     "Create an ephemeral text share on DropZone. Returns a 6-character room code that anyone can use to retrieve the text before it expires.",
   inputSchema: {
-    text: z.string().min(1).describe("The text content to share."),
+    text: z.string().min(1).max(1_000_000).describe("The text content to share (max ~1MB)."),
     expiryMinutes: z
       .number()
       .int()
       .min(1)
-      .max(1440)
+      .max(120)
       .optional()
-      .describe("Minutes until the share expires. Defaults to 15."),
+      .describe("Minutes until the share expires (1-120). Defaults to 15."),
   },
   annotations: { readOnlyHint: false, destructiveHint: false, openWorldHint: false },
   handler: async ({ text, expiryMinutes }) => {
