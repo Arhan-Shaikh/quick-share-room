@@ -157,11 +157,11 @@ const ShareRetriever = () => {
   }
 
   // Key entry step (encrypted item found, need decryption key)
-  if (pendingData) {
+  if (pendingCode) {
     return (
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Found encrypted item <span className="text-primary font-mono font-bold">{pendingData.code}</span>. Enter the decryption key to unlock.
+          Found encrypted item <span className="text-primary font-mono font-bold">{pendingCode}</span>. Enter the decryption key to unlock.
         </div>
         <div className="flex gap-2">
           <div className="relative flex-1">
