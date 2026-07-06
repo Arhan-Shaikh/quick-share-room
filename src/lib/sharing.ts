@@ -54,6 +54,10 @@ export async function createTextShare(text: string, options: CreateShareOptions 
     content = text;
   }
 
+  if (new Blob([content]).size > MAX_CONTENT_BYTES) {
+    throw new Error('Content too large. Maximum is ~5MB.');
+  }
+
   const { error } = await supabase.from('shared_items').insert({
     code,
     type: 'text',
