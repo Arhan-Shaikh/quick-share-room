@@ -139,9 +139,10 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
   const { data: rows, error } = await supabase.rpc('get_shared_item', { _code: lookupCode });
 
+  const data = Array.isArray(rows) ? rows[0] : null;
   if (error || !data) return null;
 
-  const isEncrypted = !!(data as any).encrypted;
+  const isEncrypted = !!data.encrypted;
   const baseType = data.type as 'text' | 'file';
 
   if (isEncrypted && keyString) {
@@ -181,14 +182,13 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
 /** Check if a room code has encrypted content (for prompting key entry) */
 export async function checkShareEncryption(roomCode: string): Promise<{ found: boolean; encrypted: boolean; data?: any }> {
-  const { data, error } = await supabase
-    .from('shared_items')
-    .select('*')
-    .eq('code', roomCode.toUpperCase())
-    .single();
+  const { data: rows, error } = await supabase.rpc('check_shared_item_encryption', {
+    _code: roomCode.toUpperCase(),
+  });
 
-  if (error || !data) return { found: false, encrypted: false };
-  return { found: true, encrypted: !!(data as any).encrypted, data };
+  const row = Array.isArray(rows) ? rows[0] : null;
+  if (error || !row) return { found: false, encrypted: false };
+  return { found: true, encrypted: !!row.encrypted };
 }
 
 export function getTimeRemaining(item: SharedItem): string {
