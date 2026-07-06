@@ -55,7 +55,28 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      check_shared_item_encryption: {
+        Args: { _code: string }
+        Returns: {
+          encrypted: boolean
+          found: boolean
+          type: string
+        }[]
+      }
+      get_shared_item: {
+        Args: { _code: string }
+        Returns: {
+          code: string
+          content: string
+          created_at: string
+          encrypted: boolean
+          expires_at: string
+          file_name: string
+          file_type: string
+          id: string
+          type: string
+        }[]
+      }
     }
     Enums: {
       [_ in never]: never
