@@ -75,6 +75,9 @@ export async function createTextShare(text: string, options: CreateShareOptions 
 
 export async function createFileShare(file: File, options: CreateShareOptions = {}): Promise<{ token: string; encrypted: boolean }> {
   const { expiryMs = DEFAULT_EXPIRY_MS, encrypted = false } = options;
+  if (file.size > MAX_FILE_BYTES) {
+    throw new Error('File too large. Maximum is ~3.5MB.');
+  }
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = async () => {
@@ -92,6 +95,11 @@ export async function createFileShare(file: File, options: CreateShareOptions = 
           keyString = result.keyString;
         } else {
           content = dataUrl;
+        }
+
+        if (new Blob([content]).size > MAX_CONTENT_BYTES) {
+          reject(new Error('File too large after encoding. Try a smaller file.'));
+          return;
         }
 
         const { error } = await supabase.from('shared_items').insert({
@@ -129,11 +137,7 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
   const lookupCode = isFullToken ? token.substring(0, dashIndex).toUpperCase() : token.toUpperCase().substring(0, 6);
   const keyString = isFullToken ? token.substring(dashIndex + 1) : null;
 
-  const { data, error } = await supabase
-    .from('shared_items')
-    .select('*')
-    .eq('code', lookupCode)
-    .single();
+  const { data: rows, error } = await supabase.rpc('get_shared_item', { _code: lookupCode });
 
   if (error || !data) return null;
 
