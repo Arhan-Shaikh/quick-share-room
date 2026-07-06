@@ -9,7 +9,7 @@ const ShareRetriever = () => {
   const [notFound, setNotFound] = useState(false);
   const [copied, setCopied] = useState(false);
   const [timeLeft, setTimeLeft] = useState('');
-  const [pendingData, setPendingData] = useState<any>(null);
+  const [pendingCode, setPendingCode] = useState<string | null>(null);
   const [decryptionKey, setDecryptionKey] = useState('');
   const [keyError, setKeyError] = useState(false);
   const [loading, setLoading] = useState(false);
