@@ -137,9 +137,11 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
   const lookupCode = isFullToken ? token.substring(0, dashIndex).toUpperCase() : token.toUpperCase().substring(0, 6);
   const keyString = isFullToken ? token.substring(dashIndex + 1) : null;
 
-  const { data: rows, error } = await supabase.rpc('get_shared_item', { _code: lookupCode });
+  const { data: resp, error } = await supabase.functions.invoke('get-share', {
+    body: { code: lookupCode },
+  });
 
-  const data = Array.isArray(rows) ? rows[0] : null;
+  const data = resp?.item ?? null;
   if (error || !data) return null;
 
   const isEncrypted = !!data.encrypted;
@@ -176,19 +178,17 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
     };
   }
 
-  // Encrypted but no key provided — return null (caller should prompt for key)
   return null;
 }
 
 /** Check if a room code has encrypted content (for prompting key entry) */
 export async function checkShareEncryption(roomCode: string): Promise<{ found: boolean; encrypted: boolean; data?: any }> {
-  const { data: rows, error } = await supabase.rpc('check_shared_item_encryption', {
-    _code: roomCode.toUpperCase(),
+  const { data: resp, error } = await supabase.functions.invoke('get-share', {
+    body: { code: roomCode.toUpperCase(), checkOnly: true },
   });
 
-  const row = Array.isArray(rows) ? rows[0] : null;
-  if (error || !row) return { found: false, encrypted: false };
-  return { found: true, encrypted: !!row.encrypted };
+  if (error || !resp?.found) return { found: false, encrypted: false };
+  return { found: true, encrypted: !!resp.encrypted };
 }
 
 export function getTimeRemaining(item: SharedItem): string {
