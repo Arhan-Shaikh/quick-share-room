@@ -20,6 +20,8 @@ export const EXPIRY_OPTIONS = [
 ] as const;
 
 const DEFAULT_EXPIRY_MS = 15 * 60 * 1000;
+const MAX_CONTENT_BYTES = 5_000_000 - 1;
+const MAX_FILE_BYTES = Math.floor(MAX_CONTENT_BYTES * 0.7); // account for base64 overhead (~33%)
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
