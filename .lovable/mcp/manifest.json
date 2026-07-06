@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "sdk_version": "0.20.0",
+  "path": "/functions/v1/mcp",
+  "auth": {
+    "type": "none"
+  },
+  "mcp": {
+    "server": {
+      "name": "dropzone-mcp",
+      "version": "0.1.0",
+      "title": "DropZone MCP"
+    },
+    "tools": [
+      {
+        "name": "create_text_share",
+        "title": "Create text share",
+        "description": "Create an ephemeral text share on DropZone. Returns a 6-character room code that anyone can use to retrieve the text before it expires.",
+        "annotations": {
+          "readOnlyHint": false,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string",
+              "minLength": 1,
+              "description": "The text content to share."
+            },
+            "expiryMinutes": {
+              "description": "Minutes until the share expires. Defaults to 15.",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1440
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "retrieve_share",
+        "title": "Retrieve share",
+        "description": "Retrieve a DropZone share by its 6-character room code. Returns the shared text, or metadata for files and encrypted shares.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "http://json-schema.org/draft-07/schema#",
+          "type": "object",
+          "properties": {
+            "roomCode": {
+              "type": "string",
+              "minLength": 6,
+              "maxLength": 6,
+              "description": "The 6-character room code."
+            }
+          },
+          "required": [
+            "roomCode"
+          ]
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
