@@ -108,7 +108,7 @@ const ShareRetriever = () => {
     setCode('');
     setItem(null);
     setNotFound(false);
-    setPendingData(null);
+    setPendingCode(null);
     setDecryptionKey('');
     setKeyError(false);
   };
