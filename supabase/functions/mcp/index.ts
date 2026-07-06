@@ -67,16 +67,13 @@ var retrieve_share_default = defineTool2({
   handler: async ({ roomCode }) => {
     const supabase = createClient2(
       process.env.SUPABASE_URL,
-      process.env.SUPABASE_PUBLISHABLE_KEY,
+      process.env.SUPABASE_SERVICE_ROLE_KEY,
       { auth: { persistSession: false, autoRefreshToken: false } }
     );
-    const { data: rows, error } = await supabase.rpc("get_shared_item", {
-      _code: roomCode.toUpperCase()
-    });
+    const { data, error } = await supabase.from("shared_items").select("id, code, type, content, file_name, file_type, encrypted, created_at, expires_at").eq("code", roomCode.toUpperCase()).gt("expires_at", (/* @__PURE__ */ new Date()).toISOString()).maybeSingle();
     if (error) {
       return { content: [{ type: "text", text: `Lookup failed: ${error.message}` }], isError: true };
     }
-    const data = Array.isArray(rows) ? rows[0] : null;
     if (!data) {
       return { content: [{ type: "text", text: "Not found or expired." }], isError: true };
     }
