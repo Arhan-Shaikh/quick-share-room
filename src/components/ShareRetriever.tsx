@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { retrieveShare, getTimeRemaining, checkShareEncryption, type SharedItem } from '@/lib/sharing';
-import { decrypt } from '@/lib/crypto';
+
 import { Download, Copy, Check, Clock, Key } from 'lucide-react';
 
 const ShareRetriever = () => {
