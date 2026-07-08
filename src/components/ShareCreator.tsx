@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { createTextShare, createFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
-import { Upload, FileText, Copy, Check, Lock, Unlock } from 'lucide-react';
+import { createTextShare, createFileShare, createMultiFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
+import { Upload, FileText, Copy, Check, Lock, Unlock, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 type Mode = 'idle' | 'text' | 'file';
