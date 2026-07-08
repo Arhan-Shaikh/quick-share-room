@@ -136,6 +136,67 @@ export async function createFileShare(file: File, options: CreateShareOptions = 
   });
 }
 
+const MULTI_FILE_MIME = 'application/x-multi-file';
+
+function readFileAsDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result as string);
+    r.onerror = () => reject(new Error('Failed to read file'));
+    r.readAsDataURL(file);
+  });
+}
+
+export async function createMultiFileShare(files: File[], options: CreateShareOptions = {}): Promise<{ token: string; encrypted: boolean }> {
+  const { expiryMs = DEFAULT_EXPIRY_MS, encrypted = false } = options;
+  if (files.length === 0) throw new Error('No files selected');
+  if (files.length === 1) return createFileShare(files[0], options);
+
+  const totalSize = files.reduce((s, f) => s + f.size, 0);
+  if (totalSize > MAX_FILE_BYTES) {
+    throw new Error('Total file size too large. Maximum is ~3.5MB combined.');
+  }
+
+  const payload: SharedFile[] = [];
+  for (const f of files) {
+    payload.push({ name: f.name, type: f.type, dataUrl: await readFileAsDataUrl(f) });
+  }
+
+  const code = generateCode();
+  const expiresAt = new Date(Date.now() + expiryMs).toISOString();
+  const raw = JSON.stringify(payload);
+
+  let content: string;
+  let keyString: string | null = null;
+  if (encrypted) {
+    const result = await encrypt(raw);
+    content = result.ciphertext;
+    keyString = result.keyString;
+  } else {
+    content = raw;
+  }
+
+  if (new Blob([content]).size > MAX_CONTENT_BYTES) {
+    throw new Error('Files too large after encoding. Try smaller files.');
+  }
+
+  const { error } = await supabase.from('shared_items').insert({
+    code,
+    type: 'file',
+    content,
+    encrypted,
+    file_name: `multi:${files.length}`,
+    file_type: MULTI_FILE_MIME,
+    expires_at: expiresAt,
+  });
+
+  if (error) throw new Error('Failed to create share');
+  return {
+    token: encrypted ? `${code}-${keyString}` : code,
+    encrypted,
+  };
+}
+
 /** Retrieve by full token or room code. Returns item + whether decryption key is needed. */
 export async function retrieveShare(token: string): Promise<SharedItem | null> {
   const dashIndex = token.indexOf('-');
