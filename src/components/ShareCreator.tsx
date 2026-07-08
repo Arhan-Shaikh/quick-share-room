@@ -252,13 +252,27 @@ const ShareCreator = () => {
         </div>
       )}
 
-      {mode === 'file' && file && (
+      {mode === 'file' && files.length > 0 && (
         <div className="space-y-3">
-          <div className="bg-card border border-border rounded p-4 flex items-center gap-3">
-            <FileText size={20} className="text-primary" />
-            <div className="text-sm truncate">{file.name}</div>
-            <div className="text-xs text-muted-foreground ml-auto">
-              {(file.size / 1024).toFixed(1)} KB
+          <div className="space-y-2">
+            {files.map((f, i) => (
+              <div key={i} className="bg-card border border-border rounded p-3 flex items-center gap-3">
+                <FileText size={18} className="text-primary shrink-0" />
+                <div className="text-sm truncate flex-1">{f.name}</div>
+                <div className="text-xs text-muted-foreground shrink-0">
+                  {(f.size / 1024).toFixed(1)} KB
+                </div>
+                <button
+                  onClick={() => setFiles(files.filter((_, idx) => idx !== i))}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="Remove file"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <div className="text-xs text-muted-foreground text-right">
+              Total: {(files.reduce((s, f) => s + f.size, 0) / 1024).toFixed(1)} KB · {files.length} file{files.length > 1 ? 's' : ''}
             </div>
           </div>
           <div className="flex gap-2">
