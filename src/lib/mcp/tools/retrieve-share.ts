@@ -1,5 +1,4 @@
 import { defineTool } from "@lovable.dev/mcp-js";
-import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 
 export default defineTool({
@@ -16,22 +15,26 @@ export default defineTool({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ roomCode }) => {
-    const supabase = createClient(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { auth: { persistSession: false, autoRefreshToken: false } },
-    );
+    const supabaseUrl = process.env.SUPABASE_URL!;
+    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY!;
+    const code = roomCode.toUpperCase();
 
-    const { data, error } = await supabase
-      .from("shared_items")
-      .select("id, code, type, content, file_name, file_type, encrypted, created_at, expires_at")
-      .eq("code", roomCode.toUpperCase())
-      .gt("expires_at", new Date().toISOString())
-      .maybeSingle();
+    const resp = await fetch(`${supabaseUrl}/functions/v1/get-share`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: publishableKey,
+        Authorization: `Bearer ${publishableKey}`,
+      },
+      body: JSON.stringify({ code }),
+    });
 
-    if (error) {
-      return { content: [{ type: "text", text: `Lookup failed: ${error.message}` }], isError: true };
+    if (!resp.ok) {
+      return { content: [{ type: "text", text: `Lookup failed (${resp.status}).` }], isError: true };
     }
+
+    const json = await resp.json().catch(() => null) as { item?: any } | null;
+    const data = json?.item;
     if (!data) {
       return { content: [{ type: "text", text: "Not found or expired." }], isError: true };
     }

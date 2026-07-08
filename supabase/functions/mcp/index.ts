@@ -54,7 +54,6 @@ var create_text_share_default = defineTool({
 
 // src/lib/mcp/tools/retrieve-share.ts
 import { defineTool as defineTool2 } from "npm:@lovable.dev/mcp-js@0.20.0";
-import { createClient as createClient2 } from "npm:@supabase/supabase-js@^2.100.1";
 import { z as z2 } from "npm:zod@^4.4.3";
 var retrieve_share_default = defineTool2({
   name: "retrieve_share",
@@ -65,15 +64,23 @@ var retrieve_share_default = defineTool2({
   },
   annotations: { readOnlyHint: true, idempotentHint: true, openWorldHint: false },
   handler: async ({ roomCode }) => {
-    const supabase = createClient2(
-      process.env.SUPABASE_URL,
-      process.env.SUPABASE_SERVICE_ROLE_KEY,
-      { auth: { persistSession: false, autoRefreshToken: false } }
-    );
-    const { data, error } = await supabase.from("shared_items").select("id, code, type, content, file_name, file_type, encrypted, created_at, expires_at").eq("code", roomCode.toUpperCase()).gt("expires_at", (/* @__PURE__ */ new Date()).toISOString()).maybeSingle();
-    if (error) {
-      return { content: [{ type: "text", text: `Lookup failed: ${error.message}` }], isError: true };
+    const supabaseUrl = process.env.SUPABASE_URL;
+    const publishableKey = process.env.SUPABASE_PUBLISHABLE_KEY;
+    const code = roomCode.toUpperCase();
+    const resp = await fetch(`${supabaseUrl}/functions/v1/get-share`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: publishableKey,
+        Authorization: `Bearer ${publishableKey}`
+      },
+      body: JSON.stringify({ code })
+    });
+    if (!resp.ok) {
+      return { content: [{ type: "text", text: `Lookup failed (${resp.status}).` }], isError: true };
     }
+    const json = await resp.json().catch(() => null);
+    const data = json?.item;
     if (!data) {
       return { content: [{ type: "text", text: "Not found or expired." }], isError: true };
     }
