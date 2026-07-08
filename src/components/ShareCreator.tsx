@@ -137,9 +137,10 @@ const ShareCreator = () => {
               </code>
               <button
                 onClick={handleCopy}
+                aria-label={copied ? 'Copied share token' : 'Copy share token'}
                 className="p-2 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
               >
-                {copied ? <Check size={18} /> : <Copy size={18} />}
+                {copied ? <Check size={18} aria-hidden="true" /> : <Copy size={18} aria-hidden="true" />}
               </button>
             </div>
           </div>
