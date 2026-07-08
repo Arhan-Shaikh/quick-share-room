@@ -212,13 +212,14 @@ const ShareCreator = () => {
               </button>
               <label className="px-4 py-2 bg-secondary text-secondary-foreground rounded text-sm hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
                 <Upload size={14} className="inline mr-2" />
-                Upload file
+                Upload files
                 <input
                   type="file"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) { setFile(f); setMode('file'); }
+                    const list = Array.from(e.target.files ?? []);
+                    if (list.length > 0) { setFiles(list); setMode('file'); }
                   }}
                 />
               </label>
