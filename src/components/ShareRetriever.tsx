@@ -143,9 +143,10 @@ const ShareRetriever = () => {
             </pre>
             <button
               onClick={handleCopy}
+              aria-label={copied ? 'Copied shared text' : 'Copy shared text'}
               className="absolute top-2 right-2 p-1.5 rounded bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground transition-colors"
             >
-              {copied ? <Check size={14} /> : <Copy size={14} />}
+              {copied ? <Check size={14} aria-hidden="true" /> : <Copy size={14} aria-hidden="true" />}
             </button>
           </div>
         )}
