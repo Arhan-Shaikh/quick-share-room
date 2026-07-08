@@ -56,7 +56,7 @@ const Index = () => {
           <p>Auto-expires based on your chosen duration</p>
         </div>
       </div>
-    </div>
+    </main>
   );
 };
 
