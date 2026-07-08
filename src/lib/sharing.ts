@@ -214,39 +214,41 @@ export async function retrieveShare(token: string): Promise<SharedItem | null> {
 
   const isEncrypted = !!data.encrypted;
   const baseType = data.type as 'text' | 'file';
+  const isMulti = data.file_type === MULTI_FILE_MIME;
 
+  let rawContent: string | null = null;
   if (isEncrypted && keyString) {
     try {
-      const decryptedContent = await decrypt(data.content, keyString);
-      return {
-        id: data.id,
-        code: data.code,
-        type: baseType,
-        content: decryptedContent,
-        fileName: data.file_name ?? undefined,
-        fileType: data.file_type ?? undefined,
-        createdAt: data.created_at,
-        expiresAt: data.expires_at,
-      };
+      rawContent = await decrypt(data.content, keyString);
+    } catch {
+      return null;
+    }
+  } else if (!isEncrypted) {
+    rawContent = data.content;
+  }
+
+  if (rawContent === null) return null;
+
+  let files: SharedFile[] | undefined;
+  if (isMulti) {
+    try {
+      files = JSON.parse(rawContent) as SharedFile[];
     } catch {
       return null;
     }
   }
 
-  if (!isEncrypted) {
-    return {
-      id: data.id,
-      code: data.code,
-      type: baseType,
-      content: data.content,
-      fileName: data.file_name ?? undefined,
-      fileType: data.file_type ?? undefined,
-      createdAt: data.created_at,
-      expiresAt: data.expires_at,
-    };
-  }
-
-  return null;
+  return {
+    id: data.id,
+    code: data.code,
+    type: baseType,
+    content: isMulti ? '' : rawContent,
+    fileName: data.file_name ?? undefined,
+    fileType: data.file_type ?? undefined,
+    files,
+    createdAt: data.created_at,
+    expiresAt: data.expires_at,
+  };
 }
 
 /** Check if a room code has encrypted content (for prompting key entry) */
