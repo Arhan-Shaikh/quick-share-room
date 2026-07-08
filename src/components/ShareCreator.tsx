@@ -25,15 +25,17 @@ const ShareCreator = () => {
         const result = await createTextShare(text.trim(), opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
-      } else if (mode === 'file' && file) {
-        const result = await createFileShare(file, opts);
+      } else if (mode === 'file' && files.length > 0) {
+        const result = files.length === 1
+          ? await createFileShare(files[0], opts)
+          : await createMultiFileShare(files, opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
-  }, [mode, text, file, expiryMs, encryptionEnabled]);
+  }, [mode, text, files, expiryMs, encryptionEnabled]);
 
   const handleCopy = () => {
     if (token) {
