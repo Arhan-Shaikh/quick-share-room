@@ -1,0 +1,9 @@
+# DropZone
+
+> Ephemeral, account-free sharing of files (up to 10 GB) and text snippets via a 6-character room code, with auto-expiry and optional end-to-end encryption.
+
+DropZone is a lightweight web app for quickly sending a file or text snippet to someone (or to another device). You paste or drop content, get a short room code, and the recipient enters that code to retrieve it. Shares self-destruct after 5 minutes to 2 hours. Optional client-side AES-GCM encryption keeps the payload unreadable to the server; the decryption key is embedded in a longer share token instead of the room code.
+
+## Pages
+
+- [Home](/): Create a share or retrieve one using a 6-character room code.
