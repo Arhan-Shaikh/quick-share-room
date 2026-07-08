@@ -48,9 +48,9 @@ const ShareCreator = () => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) {
-      setFile(f);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) {
+      setFiles(dropped);
       setMode('file');
     }
   }, []);
@@ -58,7 +58,7 @@ const ShareCreator = () => {
   const reset = () => {
     setMode('idle');
     setText('');
-    setFile(null);
+    setFiles([]);
     setToken(null);
     setIsEncrypted(false);
     setError('');
