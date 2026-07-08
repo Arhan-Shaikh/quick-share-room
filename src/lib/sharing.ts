@@ -1,6 +1,12 @@
 import { supabase } from '@/integrations/supabase/client';
 import { encrypt, decrypt } from '@/lib/crypto';
 
+export interface SharedFile {
+  name: string;
+  type: string;
+  dataUrl: string;
+}
+
 export interface SharedItem {
   id: string;
   code: string;
@@ -8,6 +14,7 @@ export interface SharedItem {
   content: string;
   fileName?: string;
   fileType?: string;
+  files?: SharedFile[];
   createdAt: string;
   expiresAt: string;
 }
