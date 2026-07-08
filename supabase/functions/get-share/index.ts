@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
 
     const { data, error } = await supabase
       .from('shared_items')
-      .select('id, code, type, content, file_name, file_type, encrypted, created_at, expires_at')
+      .select('id, code, type, content, file_name, file_type, encrypted, created_at, expires_at, storage_paths, file_sizes, file_names, file_types')
       .eq('code', normalized)
       .gt('expires_at', nowIso)
       .maybeSingle();

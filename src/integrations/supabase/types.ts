@@ -22,8 +22,12 @@ export type Database = {
           encrypted: boolean
           expires_at: string
           file_name: string | null
+          file_names: string[] | null
+          file_sizes: number[] | null
           file_type: string | null
+          file_types: string[] | null
           id: string
+          storage_paths: string[] | null
           type: string
         }
         Insert: {
@@ -33,8 +37,12 @@ export type Database = {
           encrypted?: boolean
           expires_at: string
           file_name?: string | null
+          file_names?: string[] | null
+          file_sizes?: number[] | null
           file_type?: string | null
+          file_types?: string[] | null
           id?: string
+          storage_paths?: string[] | null
           type: string
         }
         Update: {
@@ -44,8 +52,12 @@ export type Database = {
           encrypted?: boolean
           expires_at?: string
           file_name?: string | null
+          file_names?: string[] | null
+          file_sizes?: number[] | null
           file_type?: string | null
+          file_types?: string[] | null
           id?: string
+          storage_paths?: string[] | null
           type?: string
         }
         Relationships: []

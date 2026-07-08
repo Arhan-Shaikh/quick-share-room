@@ -1,5 +1,12 @@
-import { useState, useCallback } from 'react';
-import { createTextShare, createFileShare, createMultiFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
+import { useState, useCallback, useMemo } from 'react';
+import {
+  createTextShare,
+  createMultiFileShare,
+  EXPIRY_OPTIONS,
+  MAX_FILE_SIZE,
+  MAX_INLINE_FILE_BYTES,
+  formatBytes,
+} from '@/lib/sharing';
 import { Upload, FileText, Copy, Check, Lock, Unlock, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
@@ -16,26 +23,43 @@ const ShareCreator = () => {
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
   const [expiryMs, setExpiryMs] = useState(EXPIRY_OPTIONS[1].value);
+  const [uploading, setUploading] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  const totalFileBytes = useMemo(() => files.reduce((s, f) => s + f.size, 0), [files]);
+  const oversizeFile = useMemo(() => files.find((f) => f.size > MAX_FILE_SIZE), [files]);
+  const canEncryptFiles = mode !== 'file' || totalFileBytes <= MAX_INLINE_FILE_BYTES;
 
   const handleShare = useCallback(async () => {
     setError('');
+    setProgress(0);
+    setUploading(true);
     try {
-      const opts = { expiryMs, encrypted: encryptionEnabled };
+      // For files >5 MB E2E is not supported — silently fall back to no encryption on that path.
+      const effectiveEncrypted = mode === 'file' ? encryptionEnabled && canEncryptFiles : encryptionEnabled;
+      const opts = {
+        expiryMs,
+        encrypted: effectiveEncrypted,
+        onProgress: (fraction: number) => setProgress(fraction),
+      };
       if (mode === 'text' && text.trim()) {
         const result = await createTextShare(text.trim(), opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
       } else if (mode === 'file' && files.length > 0) {
-        const result = files.length === 1
-          ? await createFileShare(files[0], opts)
-          : await createMultiFileShare(files, opts);
+        if (oversizeFile) {
+          throw new Error(`"${oversizeFile.name}" exceeds the 10 GB maximum.`);
+        }
+        const result = await createMultiFileShare(files, opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      setUploading(false);
     }
-  }, [mode, text, files, expiryMs, encryptionEnabled]);
+  }, [mode, text, files, expiryMs, encryptionEnabled, canEncryptFiles, oversizeFile]);
 
   const handleCopy = () => {
     if (token) {
@@ -62,6 +86,8 @@ const ShareCreator = () => {
     setToken(null);
     setIsEncrypted(false);
     setError('');
+    setProgress(0);
+    setUploading(false);
   };
 
   const selectedExpiry = EXPIRY_OPTIONS.find(o => o.value === expiryMs);
@@ -260,11 +286,12 @@ const ShareCreator = () => {
                 <FileText size={18} className="text-primary shrink-0" />
                 <div className="text-sm truncate flex-1">{f.name}</div>
                 <div className="text-xs text-muted-foreground shrink-0">
-                  {(f.size / 1024).toFixed(1)} KB
+                  {formatBytes(f.size)}
                 </div>
                 <button
                   onClick={() => setFiles(files.filter((_, idx) => idx !== i))}
-                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                  disabled={uploading}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors disabled:opacity-30"
                   aria-label="Remove file"
                 >
                   <X size={14} />
@@ -272,17 +299,48 @@ const ShareCreator = () => {
               </div>
             ))}
             <div className="text-xs text-muted-foreground text-right">
-              Total: {(files.reduce((s, f) => s + f.size, 0) / 1024).toFixed(1)} KB · {files.length} file{files.length > 1 ? 's' : ''}
+              Total: {formatBytes(totalFileBytes)} · {files.length} file{files.length > 1 ? 's' : ''} · max 10 GB per file
             </div>
+            {encryptionEnabled && !canEncryptFiles && (
+              <div className="text-xs text-yellow-500 flex items-start gap-1.5">
+                <Unlock size={12} className="mt-0.5 shrink-0" />
+                <span>E2E encryption only supports files up to {formatBytes(MAX_INLINE_FILE_BYTES)}. This share will upload without encryption.</span>
+              </div>
+            )}
+            {oversizeFile && (
+              <div className="text-xs text-destructive">
+                "{oversizeFile.name}" exceeds the 10 GB per-file limit.
+              </div>
+            )}
           </div>
+
+          {uploading && (
+            <div className="space-y-1">
+              <div className="h-2 w-full bg-secondary rounded overflow-hidden">
+                <div
+                  className="h-full bg-primary transition-[width] duration-150"
+                  style={{ width: `${Math.round(progress * 100)}%` }}
+                />
+              </div>
+              <div className="text-xs text-muted-foreground text-right">
+                Uploading… {Math.round(progress * 100)}%
+              </div>
+            </div>
+          )}
+
           <div className="flex gap-2">
             <button
               onClick={handleShare}
-              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-semibold hover:shadow-[var(--terminal-glow-strong)] transition-shadow"
+              disabled={uploading || !!oversizeFile}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded text-sm font-semibold disabled:opacity-30 hover:shadow-[var(--terminal-glow-strong)] transition-shadow"
             >
-              Generate code
+              {uploading ? 'Uploading…' : 'Generate code'}
             </button>
-            <button onClick={reset} className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <button
+              onClick={reset}
+              disabled={uploading}
+              className="px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
+            >
               Cancel
             </button>
           </div>
