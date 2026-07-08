@@ -86,6 +86,8 @@ const ShareCreator = () => {
     setToken(null);
     setIsEncrypted(false);
     setError('');
+    setProgress(0);
+    setUploading(false);
   };
 
   const selectedExpiry = EXPIRY_OPTIONS.find(o => o.value === expiryMs);
