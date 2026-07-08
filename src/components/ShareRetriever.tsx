@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { retrieveShare, getTimeRemaining, checkShareEncryption, type SharedItem } from '@/lib/sharing';
+import { retrieveShare, getTimeRemaining, checkShareEncryption, formatBytes, type SharedItem, type SharedFile } from '@/lib/sharing';
 
 import { Download, Copy, Check, Clock, Key } from 'lucide-react';
 
