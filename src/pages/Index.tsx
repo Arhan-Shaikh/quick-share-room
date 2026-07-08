@@ -6,16 +6,17 @@ const Index = () => {
   const [tab, setTab] = useState<'share' | 'retrieve'>('share');
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
+    <main className="min-h-screen flex flex-col items-center justify-center px-4 py-12">
       <div className="w-full max-w-md space-y-8">
         {/* Header */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">
             <span className="text-primary">drop</span>
             <span className="text-foreground">zone</span>
-            <span className="text-primary animate-pulse">_</span>
+            <span className="text-primary animate-pulse" aria-hidden="true">_</span>
+            <span className="sr-only"> — Ephemeral file & text sharing</span>
           </h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-foreground/70">
             Ephemeral sharing. No account. No trace.
           </p>
         </div>
