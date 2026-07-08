@@ -8,7 +8,7 @@ type Mode = 'idle' | 'text' | 'file';
 const ShareCreator = () => {
   const [mode, setMode] = useState<Mode>('idle');
   const [text, setText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
