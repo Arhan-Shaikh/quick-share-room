@@ -104,6 +104,13 @@ const ShareRetriever = () => {
     }
   };
 
+  const downloadOne = (name: string, dataUrl: string) => {
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = name;
+    a.click();
+  };
+
   const reset = () => {
     setCode('');
     setItem(null);
@@ -136,7 +143,31 @@ const ShareRetriever = () => {
           </div>
         )}
 
-        {item.type === 'file' && (
+        {item.type === 'file' && item.files && item.files.length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs text-muted-foreground">
+              {item.files.length} files
+            </div>
+            {item.files.map((f, i) => (
+              <button
+                key={i}
+                onClick={() => downloadOne(f.name, f.dataUrl)}
+                className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded hover:border-primary transition-colors w-full text-left"
+              >
+                <Download size={16} className="text-primary shrink-0" />
+                <span className="text-sm truncate">{f.name}</span>
+              </button>
+            ))}
+            <button
+              onClick={() => item.files!.forEach(f => downloadOne(f.name, f.dataUrl))}
+              className="text-xs text-primary hover:underline"
+            >
+              Download all
+            </button>
+          </div>
+        )}
+
+        {item.type === 'file' && !item.files && (
           <button
             onClick={handleDownload}
             className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded hover:border-primary transition-colors w-full"

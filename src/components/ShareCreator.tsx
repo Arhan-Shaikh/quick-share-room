@@ -1,6 +1,6 @@
 import { useState, useCallback } from 'react';
-import { createTextShare, createFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
-import { Upload, FileText, Copy, Check, Lock, Unlock } from 'lucide-react';
+import { createTextShare, createFileShare, createMultiFileShare, EXPIRY_OPTIONS } from '@/lib/sharing';
+import { Upload, FileText, Copy, Check, Lock, Unlock, X } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 
 type Mode = 'idle' | 'text' | 'file';
@@ -8,7 +8,7 @@ type Mode = 'idle' | 'text' | 'file';
 const ShareCreator = () => {
   const [mode, setMode] = useState<Mode>('idle');
   const [text, setText] = useState('');
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const [token, setToken] = useState<string | null>(null);
   const [isEncrypted, setIsEncrypted] = useState(false);
   const [encryptionEnabled, setEncryptionEnabled] = useState(false);
@@ -25,15 +25,17 @@ const ShareCreator = () => {
         const result = await createTextShare(text.trim(), opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
-      } else if (mode === 'file' && file) {
-        const result = await createFileShare(file, opts);
+      } else if (mode === 'file' && files.length > 0) {
+        const result = files.length === 1
+          ? await createFileShare(files[0], opts)
+          : await createMultiFileShare(files, opts);
         setToken(result.token);
         setIsEncrypted(result.encrypted);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     }
-  }, [mode, text, file, expiryMs, encryptionEnabled]);
+  }, [mode, text, files, expiryMs, encryptionEnabled]);
 
   const handleCopy = () => {
     if (token) {
@@ -46,9 +48,9 @@ const ShareCreator = () => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) {
-      setFile(f);
+    const dropped = Array.from(e.dataTransfer.files);
+    if (dropped.length > 0) {
+      setFiles(dropped);
       setMode('file');
     }
   }, []);
@@ -56,7 +58,7 @@ const ShareCreator = () => {
   const reset = () => {
     setMode('idle');
     setText('');
-    setFile(null);
+    setFiles([]);
     setToken(null);
     setIsEncrypted(false);
     setError('');
@@ -210,13 +212,14 @@ const ShareCreator = () => {
               </button>
               <label className="px-4 py-2 bg-secondary text-secondary-foreground rounded text-sm hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer">
                 <Upload size={14} className="inline mr-2" />
-                Upload file
+                Upload files
                 <input
                   type="file"
+                  multiple
                   className="hidden"
                   onChange={(e) => {
-                    const f = e.target.files?.[0];
-                    if (f) { setFile(f); setMode('file'); }
+                    const list = Array.from(e.target.files ?? []);
+                    if (list.length > 0) { setFiles(list); setMode('file'); }
                   }}
                 />
               </label>
@@ -249,13 +252,27 @@ const ShareCreator = () => {
         </div>
       )}
 
-      {mode === 'file' && file && (
+      {mode === 'file' && files.length > 0 && (
         <div className="space-y-3">
-          <div className="bg-card border border-border rounded p-4 flex items-center gap-3">
-            <FileText size={20} className="text-primary" />
-            <div className="text-sm truncate">{file.name}</div>
-            <div className="text-xs text-muted-foreground ml-auto">
-              {(file.size / 1024).toFixed(1)} KB
+          <div className="space-y-2">
+            {files.map((f, i) => (
+              <div key={i} className="bg-card border border-border rounded p-3 flex items-center gap-3">
+                <FileText size={18} className="text-primary shrink-0" />
+                <div className="text-sm truncate flex-1">{f.name}</div>
+                <div className="text-xs text-muted-foreground shrink-0">
+                  {(f.size / 1024).toFixed(1)} KB
+                </div>
+                <button
+                  onClick={() => setFiles(files.filter((_, idx) => idx !== i))}
+                  className="p-1 text-muted-foreground hover:text-destructive transition-colors"
+                  aria-label="Remove file"
+                >
+                  <X size={14} />
+                </button>
+              </div>
+            ))}
+            <div className="text-xs text-muted-foreground text-right">
+              Total: {(files.reduce((s, f) => s + f.size, 0) / 1024).toFixed(1)} KB · {files.length} file{files.length > 1 ? 's' : ''}
             </div>
           </div>
           <div className="flex gap-2">
