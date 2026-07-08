@@ -104,11 +104,18 @@ const ShareRetriever = () => {
     }
   };
 
-  const downloadOne = (name: string, dataUrl: string) => {
+  const downloadOne = (f: SharedFile) => {
+    const href = f.url ?? f.dataUrl;
+    if (!href) return;
     const a = document.createElement('a');
-    a.href = dataUrl;
-    a.download = name;
+    a.href = href;
+    a.download = f.name;
+    // Storage signed URLs are cross-origin — open in new tab as fallback
+    if (f.url) a.target = '_blank';
+    a.rel = 'noopener';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
   const reset = () => {
@@ -146,24 +153,30 @@ const ShareRetriever = () => {
         {item.type === 'file' && item.files && item.files.length > 0 && (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">
-              {item.files.length} files
+              {item.files.length} file{item.files.length > 1 ? 's' : ''}
             </div>
             {item.files.map((f, i) => (
               <button
                 key={i}
-                onClick={() => downloadOne(f.name, f.dataUrl)}
-                className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded hover:border-primary transition-colors w-full text-left"
+                onClick={() => downloadOne(f)}
+                disabled={!f.url && !f.dataUrl}
+                className="flex items-center gap-2 px-4 py-3 bg-card border border-border rounded hover:border-primary transition-colors w-full text-left disabled:opacity-40"
               >
                 <Download size={16} className="text-primary shrink-0" />
-                <span className="text-sm truncate">{f.name}</span>
+                <span className="text-sm truncate flex-1">{f.name}</span>
+                {typeof f.size === 'number' && (
+                  <span className="text-xs text-muted-foreground shrink-0">{formatBytes(f.size)}</span>
+                )}
               </button>
             ))}
-            <button
-              onClick={() => item.files!.forEach(f => downloadOne(f.name, f.dataUrl))}
-              className="text-xs text-primary hover:underline"
-            >
-              Download all
-            </button>
+            {item.files.length > 1 && (
+              <button
+                onClick={() => item.files!.forEach((f) => downloadOne(f))}
+                className="text-xs text-primary hover:underline"
+              >
+                Download all
+              </button>
+            )}
           </div>
         )}
 
