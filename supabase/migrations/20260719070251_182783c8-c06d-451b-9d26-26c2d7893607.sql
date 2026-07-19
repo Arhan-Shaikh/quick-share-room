@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anon can select shared-files for resumable uploads" ON storage.objects;
