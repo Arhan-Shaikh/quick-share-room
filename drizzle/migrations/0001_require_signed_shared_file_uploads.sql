@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "Anon can upload to shared-files" ON storage.objects;
