@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { encrypt, decrypt } from '@/lib/crypto';
 import * as tus from 'tus-js-client';
+import { resumableUploadEndpoint, UPLOAD_RETRY_DELAYS, uploadErrorMessage } from '@/lib/upload-config';
 
 export interface SharedFile {
   name: string;
@@ -93,8 +94,8 @@ async function uploadFileToStorage(
 
   await new Promise<void>((resolve, reject) => {
     const upload = new tus.Upload(file, {
-      endpoint: `${supabaseUrl}/storage/v1/upload/resumable`,
-      retryDelays: [0, 1000, 3000, 5000, 10000],
+      endpoint: resumableUploadEndpoint(supabaseUrl),
+      retryDelays: UPLOAD_RETRY_DELAYS,
       headers: {
         authorization: `Bearer ${token}`,
         apikey: anonKey,
@@ -109,7 +110,7 @@ async function uploadFileToStorage(
         contentType: file.type || 'application/octet-stream',
         cacheControl: '3600',
       },
-      onError: (err) => reject(err instanceof Error ? err : new Error(String(err))),
+      onError: (err) => reject(new Error(uploadErrorMessage(err))),
       onProgress: (sent, total) => {
         onProgress?.(sent, total);
       },
@@ -196,7 +197,6 @@ export async function createMultiFileShare(
   }
 
   const code = generateCode();
-  const expiresAt = new Date(Date.now() + expiryMs).toISOString();
 
   // -------- Inline (E2E) path: only when encryption is on AND total ≤ 5 MB.
   if (shouldGoInline(files, encrypted)) {
@@ -216,7 +216,7 @@ export async function createMultiFileShare(
       encrypted: true,
       file_name: files.length > 1 ? `multi:${files.length}` : files[0].name,
       file_type: files.length > 1 ? MULTI_FILE_MIME : files[0].type,
-      expires_at: expiresAt,
+      expires_at: new Date(Date.now() + expiryMs).toISOString(),
     });
     if (error) throw new Error('Failed to create share');
     return { token: `${code}-${keyString}`, encrypted: true };
@@ -267,7 +267,8 @@ export async function createMultiFileShare(
     file_names: fileNames,
     file_types: fileTypes,
     file_sizes: fileSizes,
-    expires_at: expiresAt,
+    // The recipient's time window starts when the upload is ready, not before.
+    expires_at: new Date(Date.now() + expiryMs).toISOString(),
   });
 
   if (error) throw new Error('Failed to create share record');
