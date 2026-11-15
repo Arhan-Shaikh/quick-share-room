@@ -86,19 +86,22 @@ async function uploadFileToStorage(
   const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
   const token = session?.access_token ?? anonKey;
 
-  // Safe object key — random suffix so listing/enumeration is useless without the code.
-  const safeName = file.name.replace(/[^\w.\-]/g, '_').slice(0, 80);
-  const rand = crypto.getRandomValues(new Uint8Array(8));
-  const suffix = Array.from(rand, (b) => b.toString(16).padStart(2, '0')).join('');
-  const objectPath = `${code}/${index}-${suffix}-${safeName}`;
+  const { data: permission, error: permissionError } = await supabase.functions.invoke('create-share-upload', {
+    body: { code, name: file.name, index, size: file.size },
+  });
+  if (permissionError || typeof permission?.path !== 'string' || typeof permission?.token !== 'string') {
+    throw new Error('Could not prepare upload. Please try again.');
+  }
+  const objectPath = permission.path;
 
   await new Promise<void>((resolve, reject) => {
     const upload = new tus.Upload(file, {
-      endpoint: resumableUploadEndpoint(supabaseUrl),
+      endpoint: `${resumableUploadEndpoint(supabaseUrl)}/sign`,
       retryDelays: UPLOAD_RETRY_DELAYS,
       headers: {
         authorization: `Bearer ${token}`,
         apikey: anonKey,
+        'x-signature': permission.token,
         'x-upsert': 'false',
       },
       uploadDataDuringCreation: true,

@@ -4,6 +4,7 @@ const { insert } = vi.hoisted(() => ({ insert: vi.fn(async () => ({ error: null 
 vi.mock('@/integrations/supabase/client', () => ({
   supabase: {
     auth: { getSession: async () => ({ data: { session: null } }) },
+    functions: { invoke: async () => ({ data: { path: 'ABC123/0-random-test.txt', token: 'upload-permission' }, error: null }) },
     from: () => ({ insert }),
   },
 }));
